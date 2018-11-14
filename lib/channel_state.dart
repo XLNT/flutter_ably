@@ -1,0 +1,9 @@
+enum ChannelState {
+  INITIALIZED,
+  ATTACHING,
+  ATTACHED,
+  DETACHING,
+  DETACHED,
+  SUSPENDED,
+  FAILED,
+}

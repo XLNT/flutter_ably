@@ -8,8 +8,15 @@ class Channels {
     this.client,
   });
 
-  RealtimeChannel get(String id) => RealtimeChannel(
-        client: client,
-        id: id,
-      );
+  Future<RealtimeChannel> get(String id) async {
+    await client.channel.invokeMethod("Realtime::RealtimeChannel#get", {
+      "clientId": client.id,
+      "id": id,
+    });
+
+    return RealtimeChannel(
+      client: client,
+      id: id,
+    );
+  }
 }

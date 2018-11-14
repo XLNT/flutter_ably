@@ -45,9 +45,11 @@ extension SwiftFlutterAblyPlugin {
 
       channel.on { (stateChange) in
         if let state = stateChange?.current {
-          self.channel.invokeMethod("Realtime::RealtimeChannel#onState", arguments: self.serializeState(clientId: clientId, channelId: channelId, state: state))
+          self.channel.invokeMethod("Realtime::RealtimeChannel#onChannelState", arguments: self.serializeState(clientId: clientId, channelId: channelId, state: state))
         }
       }
+
+      return result(nil)
     case "Realtime::RealtimeChannel#attach":
       guard let args = call.arguments as? Dictionary<String, String>,
         let clientId = args["clientId"],
@@ -113,6 +115,22 @@ extension SwiftFlutterAblyPlugin {
       }
       channel.unsubscribe()
       result(nil)
+
+    case "Realtime::RealtimeChannel#detach":
+      guard let args = call.arguments as? Dictionary<String, String>,
+        let clientId = args["clientId"],
+        let channelId = args["id"],
+        let channel = self.getChannel(clientId: clientId, channelId: channelId)
+      else {
+          return result(self.invalidArgumentErrorForCall(call))
+      }
+      channel.detach { (error) in
+        if let error = error {
+          return result(self.toFlutterError(error: error))
+        }
+
+        return result(nil)
+      }
     default:
       return result(FlutterMethodNotImplemented)
     }
@@ -132,7 +150,7 @@ extension SwiftFlutterAblyPlugin {
     return FlutterError(code: "INVALID_ARGUMENT", message: "Invalid arguments \(String(describing: call.arguments)) provided to method \(call.method).", details: nil)
   }
 
-  private func serializeMessage(clientId: String, channelId: String, message: ARTMessage) -> Dictionary<String, Any?> {
+  private func serializeMessage(clientId: String, channelId: String, message: ARTMessage) -> Dictionary<String, Any> {
     return [
       "clientId": clientId,
       "channelId": channelId,
@@ -148,11 +166,11 @@ extension SwiftFlutterAblyPlugin {
     ]
   }
 
-  private func serializeState(clientId: String, channelId: String, state: ARTRealtimeChannelState) -> Dictionary<String, Any?> {
+  private func serializeState(clientId: String, channelId: String, state: ARTRealtimeChannelState) -> Dictionary<String, Any> {
     return [
       "clientId": clientId,
       "channelId": channelId,
-      "state": state,
+      "state": state.rawValue,
     ]
   }
 }

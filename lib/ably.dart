@@ -16,17 +16,23 @@ class Ably {
 
   static void initialize() {
     _channel.setMethodCallHandler((MethodCall call) async {
-      switch (call.method) {
-        case "Realtime::RealtimeChannel#onMessage":
-          final message = _deserializeMessage(call.arguments);
-          clients[message.clientId].onMessage(message);
-          break;
-        case "Realtime::RealtimChannel#onState":
-          final state = _deserializeState(call.arguments);
-          clients[state.clientId].onChannelState(state);
-          break;
-        default:
-          print("unknown method ${call.method} with args ${call.arguments}");
+      try {
+        print("Method: ${call.method}, Arguments: ${call.arguments}");
+        switch (call.method) {
+          case "Realtime::RealtimeChannel#onMessage":
+            final message = _deserializeMessage(call.arguments);
+            clients[message.clientId].onMessage(message);
+            break;
+          case "Realtime::RealtimeChannel#onChannelState":
+            final state = _deserializeState(call.arguments);
+            clients[state.clientId].onChannelState(state);
+            break;
+          default:
+            print("Unknown method ${call.method} with args ${call.arguments}");
+        }
+      } catch (e) {
+        print("method call handler error: ${e.toString()}");
+        rethrow;
       }
     });
   }
@@ -64,7 +70,7 @@ class Ably {
     return ClientChannelState(
       clientId: args["clientId"],
       channelId: args["channelId"],
-      state: args["state"] as ChannelState,
+      state: ChannelState.values[args["state"]],
     );
   }
 }

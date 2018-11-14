@@ -1,10 +1,17 @@
 # flutter_ably
 
-A new flutter plugin project.
+> An Ably SDK for Flutter projects.
 
-## Getting Started
+## Features
 
-For help getting started with Flutter, view our online
-[documentation](https://flutter.io/).
+- Realtime
+    - JWT Token Auth
+    - `attach`
+    - `detach`
+    - `publish`
+    - `subscribe`
+    - `unsubscribe`
 
-For help on editing plugin code, view the [documentation](https://flutter.io/developing-packages/#edit-plugin-package).
+## TODO Features
+
+- presence join/leave/count

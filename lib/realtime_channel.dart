@@ -1,3 +1,5 @@
+import 'package:rxdart/rxdart.dart';
+
 import './client.dart';
 import './channel.dart';
 import './channel_input_message.dart';
@@ -7,15 +9,20 @@ import './channel_state.dart';
 class RealtimeChannel implements Channel {
   Client client;
   String id;
-  Stream<ChannelState> state;
+  Stream<ChannelState> get state => _state;
+
+  BehaviorSubject<ChannelState> _state;
 
   RealtimeChannel({
     this.client,
     this.id,
   }) {
-    state = client.allChannelStates
-        .where((s) => s.channelId == id)
-        .map((s) => s.state);
+    _state = BehaviorSubject(seedValue: ChannelState.INITIALIZED);
+    _state.addStream(
+      client.allChannelStates
+          .where((s) => s.channelId == id)
+          .map((s) => s.state),
+    );
   }
 
   Future<void> attach() async {
@@ -40,9 +47,9 @@ class RealtimeChannel implements Channel {
     });
   }
 
-  Future<void> close() async {
+  Future<void> detach() async {
     return await client.channel
-        .invokeMethod("Realtime::RealtimeChannel#close", {
+        .invokeMethod("Realtime::RealtimeChannel#detach", {
       "clientId": client.id,
       "id": id,
     });

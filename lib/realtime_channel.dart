@@ -23,44 +23,48 @@ class RealtimeChannel implements Channel {
     this.state,
   });
 
+  Future<void> setup() async {
+    return _call("setup");
+  }
+
+  Future<void> dispose() async {
+    return _call("dispose");
+  }
+
   Future<void> attach() async {
-    return await client.channel
-        .invokeMethod("Realtime::RealtimeChannel#attach", {
-      "clientId": client.id,
-      "id": id,
-    });
+    return _call("attach");
+  }
+
+  Future<void> detach() async {
+    return _call("detach");
+  }
+
+  Future<void> subscribe(String name) async {
+    return _call("subscribe", {"name": name});
+  }
+
+  Future<void> unsubscribe() async {
+    return _call("unsubscribe");
   }
 
   Future<void> publish(List<ChannelInputMessage> messages) async {
-    return await client.channel
-        .invokeMethod("Realtime::RealtimeChannel#publish", {
-      "clientId": client.id,
-      "id": id,
+    return _call("publish", {
       "messages": _serializeChannelInputMessages(messages),
     });
   }
 
-  Future<void> detach() async {
-    return await client.channel
-        .invokeMethod("Realtime::RealtimeChannel#detach", {
+  Future<void> _call(
+    String methodName, [
+    Map<String, dynamic> args = const {},
+  ]) async {
+    final Map<String, dynamic> baseArgs = {
       "clientId": client.id,
       "id": id,
-    });
-  }
-
-  Future<void> subscribe(String name) async {
-    await client.channel.invokeMethod("Realtime::RealtimeChannel#subscribe", {
-      "clientId": client.id,
-      "id": id,
-      "name": name,
-    });
-  }
-
-  Future<void> unsubscribe() async {
-    await client.channel.invokeMethod("Realtime::RealtimeChannel#unsubscribe", {
-      "clientId": client.id,
-      "id": id,
-    });
+    };
+    return client.channel.invokeMethod(
+      "Realtime::RealtimeChannel#$methodName",
+      baseArgs..addAll(args),
+    );
   }
 
   List<Map<String, String>> _serializeChannelInputMessages(

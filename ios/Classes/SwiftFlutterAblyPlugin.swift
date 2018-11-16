@@ -31,12 +31,8 @@ extension SwiftFlutterAblyPlugin {
     do {
       try throwableHandle(call, result: result);
       result(nil)
-    } catch let error {
-      if let error = error as? PluginError {
-        result(self.toFlutterError(error))
-      } else {
-        result(FlutterMethodNotImplemented)
-      }
+    } catch {
+      result(self.toFlutterError(error))
     }
   }
 
@@ -172,11 +168,11 @@ extension SwiftFlutterAblyPlugin {
 }
 
 extension SwiftFlutterAblyPlugin {
-  private func toFlutterError(_ error: PluginError) -> Any {
+  private func toFlutterError(_ error: Error) -> Any {
     switch error {
-    case .invalidArguments(let call):
+    case PluginError.invalidArguments(let call):
       return invalidArgumentErrorForCall(call)
-    case .notImplemented:
+    case PluginError.notImplemented:
       return FlutterMethodNotImplemented
     default:
       return FlutterError(code: String(describing: error), message: error.localizedDescription, details: nil)

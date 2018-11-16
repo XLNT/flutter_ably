@@ -10,7 +10,6 @@ enum ChannelError: Error {
 class ChannelsHandler {
   // MARK: Properties
 
-  var channels = [String: ARTRealtimeChannel]()
   var ably: AblyMethodChannel
   var realtime: RealtimeHandler
 
@@ -24,19 +23,14 @@ class ChannelsHandler {
   // MARK: Debug
 
   func reassemble() {
-    // nuke our platform state so that hot reloads are happy
-    channels.values.forEach { (channel) in
-      channel.off()
-      channel.detach()
-    }
-    channels.removeAll()
+
   }
 
   // MARK: Init
 
   func get(_ clientId: String, channelId: String) throws -> ARTRealtimeChannel {
     guard let channel = self.realtime.get(clientId)?.channels.get(channelId) else {
-      throw ChannelError.notFound
+      throw PluginError.notFound(resource: "Realtime::RealtimeChannel#\(channelId)")
     }
     
     return channel
@@ -65,7 +59,6 @@ class ChannelsHandler {
   func dispose(_ clientId: String, channelId: String) throws {
     let channel = try self.get(clientId, channelId: channelId)
     channel.off()
-    channels.removeValue(forKey: channelId)
   }
 
   // MARK: Lifecycle

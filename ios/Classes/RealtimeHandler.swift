@@ -17,12 +17,12 @@ class RealtimeHandler {
     clients.removeAll()
   }
 
-  func new(clientId clientId: String, token: String) throws {
+  func new(clientId: String, token: String) throws {
     let client = ARTRealtime(token: token)
     clients[clientId] = client
   }
 
-  func dispose(clientId clientId: String) throws {
+  func dispose(clientId: String) throws {
     clients.removeValue(forKey: clientId)
   }
 

@@ -1,11 +1,12 @@
+import './envelope_message.dart';
 import './channel_message.dart';
 
-class ClientMessage {
+class EnvelopeChannelMessage implements EnvelopeMessage {
   String clientId;
   String channelId;
   ChannelMessage message;
 
-  ClientMessage({
+  EnvelopeChannelMessage({
     this.clientId,
     this.channelId,
     this.message,

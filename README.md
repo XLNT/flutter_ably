@@ -6,11 +6,16 @@
 
 - Realtime
     - JWT Token Auth
-    - `attach`
-    - `detach`
-    - `publish`
-    - `subscribe`
-    - `unsubscribe`
+    - RealtimeChannel
+        - `attach`
+        - `detach`
+        - `publish`
+        - `subscribe`
+        - `unsubscribe`
+        - Presence
+            - `enter`
+            - `update`
+            - `leave`
 
 ## TODO Features
 

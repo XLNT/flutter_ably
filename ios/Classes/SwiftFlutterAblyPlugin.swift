@@ -1,19 +1,25 @@
 import Flutter
-import UIKit
 import Ably
+
+enum PluginError : Error {
+  case invalidArguments(call: FlutterMethodCall)
+  case notImplemented
+}
 
 let _kMethodChannelName = "ably";
 
 public class SwiftFlutterAblyPlugin: NSObject, FlutterPlugin {
-  var clients = [String: ARTRealtime]()
-  var channel: FlutterMethodChannel
+  var realtime: RealtimeHandler
+  var channels: ChannelsHandler
+
   public init(channel: FlutterMethodChannel) {
-    self.channel = channel
+    let ably = AblyMethodChannel(channel: channel);
+    self.realtime = RealtimeHandler(ably: ably)
+    self.channels = ChannelsHandler(ably: ably, realtime: realtime)
   }
 }
 
 extension SwiftFlutterAblyPlugin {
-
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: _kMethodChannelName, binaryMessenger: registrar.messenger())
     let instance = SwiftFlutterAblyPlugin(channel: channel)
@@ -21,157 +27,149 @@ extension SwiftFlutterAblyPlugin {
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    do {
+      let res = try throwableHandle(call, result: result);
+      result(res)
+    } catch {
+      // convert
+      result(error)
+    }
+  }
+
+  private func throwableHandle(_ call: FlutterMethodCall, result: @escaping FlutterResult) throws -> Any? {
     switch(call.method) {
+    case "reassemble":
+      realtime.reassemble()
     case "Realtime#new":
       guard let args = call.arguments as? Dictionary<String, String>,
         let token = args["token"]
       else {
-          return result(invalidArgumentErrorForCall(call))
+        throw PluginError.invalidArguments(call: call)
       }
-      let uuid = UUID().uuidString
-      let client = ARTRealtime(token: token)
 
-      clients[uuid] = client;
-
-      result(uuid)
+      return realtime.new(token: token)
     case "Realtime::RealtimeChannel#get":
       guard let args = call.arguments as? Dictionary<String, String>,
         let clientId = args["clientId"],
-        let channelId = args["id"],
-        let channel = self.getChannel(clientId: clientId, channelId: channelId)
+        let channelId = args["id"]
       else {
-        return result(self.invalidArgumentErrorForCall(call))
+        throw PluginError.invalidArguments(call: call)
       }
 
-      channel.on { (stateChange) in
-        if let state = stateChange?.current {
-          self.channel.invokeMethod("Realtime::RealtimeChannel#onChannelState", arguments: self.serializeState(clientId: clientId, channelId: channelId, state: state))
-        }
+      let _ = try! self.channels.get(clientId, channelId: channelId)
+
+      return nil
+    case "Realtime::RealtimeChannel#dispose":
+      guard let args = call.arguments as? Dictionary<String, String>,
+        let clientId = args["clientId"],
+        let channelId = args["id"]
+      else {
+          throw PluginError.invalidArguments(call: call)
       }
 
-      return result(nil)
+      return try! self.channels.off(clientId, channelId: channelId)
     case "Realtime::RealtimeChannel#attach":
       guard let args = call.arguments as? Dictionary<String, String>,
         let clientId = args["clientId"],
-        let channelId = args["id"],
-        let channel = self.getChannel(clientId: clientId, channelId: channelId)
+        let channelId = args["id"]
       else {
-        return result(self.invalidArgumentErrorForCall(call))
+          throw PluginError.invalidArguments(call: call)
       }
 
-      channel.attach { (error) in
-        if let error = error {
-          return result(self.toFlutterError(error: error))
-        }
+      return try! self.channels.attach(clientId, channelId: channelId, callback: self.handleErrorWithResult(result))
 
-        return result(nil)
-      }
     case "Realtime::RealtimeChannel#publish":
       guard let args = call.arguments as? Dictionary<String, Any>,
         let clientId = args["clientId"] as? String,
         let channelId = args["id"] as? String,
-        let channel = self.getChannel(clientId: clientId, channelId: channelId),
         let messagesDatas = args["messages"] as? [Dictionary<String, Any>]
       else {
-        return result(self.invalidArgumentErrorForCall(call))
-      }
-      let messages = messagesDatas.map { (messageData) -> ARTMessage in
-        return ARTMessage(name: messageData["name"] as? String, data: messageData["data"]!)
+          throw PluginError.invalidArguments(call: call)
       }
 
-      channel.publish(messages) { (error) in
-        if let error = error {
-          return result(self.toFlutterError(error: error))
-        }
-        return result(nil)
-      }
+      return try! channels.publish(clientId, channelId: channelId, messages: messagesDatas, callback: self.handleErrorWithResult(result))
     case "Realtime::RealtimeChannel#subscribe":
       guard let args = call.arguments as? Dictionary<String, Any>,
         let clientId = args["clientId"] as? String,
-        let channelId = args["id"] as? String,
-        let channel = self.getChannel(clientId: clientId, channelId: channelId)
+        let channelId = args["id"] as? String
       else {
-        return result(self.invalidArgumentErrorForCall(call))
+          throw PluginError.invalidArguments(call: call)
       }
 
-      let handler = { (message: ARTMessage) in
-        self.channel.invokeMethod("Realtime::RealtimeChannel#onMessage", arguments: self.serializeMessage(clientId: clientId, channelId: channelId, message: message))
-      }
-
-      if let name = args["name"] as? String {
-        channel.subscribe(name, callback: handler)
-      } else {
-        channel.subscribe(handler)
-      }
-
-      return result(nil)
+      return try! channels.subscribe(clientId, channelId: channelId, name: args["name"] as? String)
     case "Realtime::RealtimeChannel#unsubscribe":
       guard let args = call.arguments as? Dictionary<String, String>,
         let clientId = args["clientId"],
-        let channelId = args["id"],
-        let channel = self.getChannel(clientId: clientId, channelId: channelId)
+        let channelId = args["id"]
       else {
-        return result(self.invalidArgumentErrorForCall(call))
+          throw PluginError.invalidArguments(call: call)
       }
-      channel.unsubscribe()
-      result(nil)
 
+      return try! channels.unsubscribe(clientId, channelId: channelId)
     case "Realtime::RealtimeChannel#detach":
       guard let args = call.arguments as? Dictionary<String, String>,
         let clientId = args["clientId"],
-        let channelId = args["id"],
-        let channel = self.getChannel(clientId: clientId, channelId: channelId)
+        let channelId = args["id"]
       else {
-          return result(self.invalidArgumentErrorForCall(call))
+          throw PluginError.invalidArguments(call: call)
       }
-      channel.detach { (error) in
-        if let error = error {
-          return result(self.toFlutterError(error: error))
-        }
 
-        return result(nil)
+      return try! channels.detach(clientId, channelId: channelId, callback: handleErrorWithResult(result))
+    case "Realtime::RealtimeChannel::Presence#enter":
+      guard let args = call.arguments as? Dictionary<String, String>,
+        let clientId = args["clientId"],
+        let channelId = args["id"],
+        let data = args["data"]
+      else {
+          throw PluginError.invalidArguments(call: call)
       }
+
+      return try! channels.enterPresence(clientId, channelId: channelId, data: data, callback: self.handleErrorWithResult(result));
+    case "Realtime::RealtimeChannel::Presence#leave":
+      guard let args = call.arguments as? Dictionary<String, String>,
+        let clientId = args["clientId"],
+        let channelId = args["id"],
+        let data = args["data"]
+      else {
+          throw PluginError.invalidArguments(call: call)
+      }
+
+      return try! channels.leavePresence(clientId, channelId: channelId, data: data, callback: self.handleErrorWithResult(result));
+    case "Realtime::RealtimeChannel::Presence#update":
+      guard let args = call.arguments as? Dictionary<String, String>,
+        let clientId = args["clientId"],
+        let channelId = args["id"],
+        let data = args["data"]
+      else {
+          throw PluginError.invalidArguments(call: call)
+      }
+
+      return try! channels.updatePResence(clientId, channelId: channelId, data: data, callback: self.handleErrorWithResult(result));
     default:
-      return result(FlutterMethodNotImplemented)
+      throw PluginError.notImplemented
+    }
+
+    return nil
+  }
+
+  private func handleErrorWithResult(_ result: @escaping FlutterResult) -> (ARTErrorInfo?) -> () {
+    return { (error) in
+      if let error = error {
+        return result(self.toFlutterError(error: error))
+      }
+
+      return result(nil)
     }
   }
 }
 
 extension SwiftFlutterAblyPlugin {
-  private func getChannel(clientId: String, channelId: String) -> ARTRealtimeChannel? {
-    return clients[clientId]?.channels.get(channelId);
-  }
-
   private func toFlutterError(error: ARTErrorInfo) -> FlutterError {
     return FlutterError(code: String(error.statusCode), message: error.message, details: error.description())
   }
 
   private func invalidArgumentErrorForCall(_ call: FlutterMethodCall) -> FlutterError {
     return FlutterError(code: "INVALID_ARGUMENT", message: "Invalid arguments \(String(describing: call.arguments)) provided to method \(call.method).", details: nil)
-  }
-
-  private func serializeMessage(clientId: String, channelId: String, message: ARTMessage) -> Dictionary<String, Any> {
-    return [
-      "clientId": clientId,
-      "channelId": channelId,
-      "message": [
-        "id": message.id,
-        "clientId": message.clientId,
-        "connectionId": message.connectionId,
-        "timestamp": message.timestamp == nil ? nil : Formatter.iso8601.string(from: message.timestamp!),
-        "encoding": message.encoding,
-        "data": message.data,
-        "name": message.name
-      ]
-    ]
-  }
-
-  private func serializeState(clientId: String, channelId: String, state: ARTRealtimeChannelState) -> Dictionary<String, Any> {
-    return [
-      "clientId": clientId,
-      "channelId": channelId,
-      "state": state.rawValue,
-    ]
   }
 }
 

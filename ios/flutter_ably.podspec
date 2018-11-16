@@ -4,13 +4,13 @@
 Pod::Spec.new do |s|
   s.name             = 'flutter_ably'
   s.version          = '0.0.1'
-  s.summary          = 'A new flutter plugin project.'
+  s.summary          = 'An Ably SDK for Flutter.'
   s.description      = <<-DESC
-A new flutter plugin project.
+An Ably SDK for Flutter.
                        DESC
   s.homepage         = 'http://example.com'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Your Company' => 'email@example.com' }
+  s.author           = { 'XLNT' => 'matt@xlnt.co' }
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.public_header_files = 'Classes/**/*.h'

@@ -38,15 +38,12 @@ class ChannelsHandler {
     guard let channel = self.realtime.get(clientId)?.channels.get(channelId) else {
       throw ChannelError.notFound
     }
+    
     return channel
   }
 
-  func dispose(_ clientId: String, channelId: String) {
-    channels.removeValue(forKey: channelId)
-  }
-
-  func initialize(_ clientId: String, channelId: String) throws {
-    let channel = try! self.get(clientId, channelId: channelId)
+  func setup(_ clientId: String, channelId: String) throws {
+    let channel = try self.get(clientId, channelId: channelId)
     // send initial state change
     self.ably.emit("Realtime::RealtimeChannel#onChannelStateChange", arguments: self.serializeStateChange(
       clientId: clientId,
@@ -65,20 +62,21 @@ class ChannelsHandler {
     }
   }
 
-  public func off(_ clientId: String, channelId: String) throws {
-    let channel = try! self.get(clientId, channelId: channelId)
+  func dispose(_ clientId: String, channelId: String) throws {
+    let channel = try self.get(clientId, channelId: channelId)
     channel.off()
+    channels.removeValue(forKey: channelId)
   }
 
   // MARK: Lifecycle
 
   public func attach(_ clientId: String, channelId: String, callback: AblyErrorCallback) throws {
-    let channel = try! self.get(clientId, channelId: channelId)
+    let channel = try self.get(clientId, channelId: channelId)
     channel.attach(callback)
   }
 
   public func publish(_ clientId: String, channelId: String, messages: [Dictionary<String, Any>], callback: AblyErrorCallback) throws {
-    let channel = try! self.get(clientId, channelId: channelId)
+    let channel = try self.get(clientId, channelId: channelId)
     
     channel.publish(messages.map { (messageData) -> ARTMessage in
       return ARTMessage(name: messageData["name"] as? String, data: messageData["data"]!)
@@ -86,7 +84,7 @@ class ChannelsHandler {
   }
 
   public func subscribe(_ clientId: String, channelId: String, name: String?) throws {
-    let channel = try! self.get(clientId, channelId: channelId)
+    let channel = try self.get(clientId, channelId: channelId)
     let handler = { (message: ARTMessage) in
       self.ably.emit("Realtime::RealtimeChannel#onMessage", arguments: self.serializeMessage(clientId: clientId, channelId: channelId, message: message))
     }
@@ -99,29 +97,29 @@ class ChannelsHandler {
   }
 
   public func unsubscribe(_ clientId: String, channelId: String) throws {
-    let channel = try! self.get(clientId, channelId: channelId)
+    let channel = try self.get(clientId, channelId: channelId)
     channel.unsubscribe()
   }
 
   public func detach(_ clientId: String, channelId: String, callback: AblyErrorCallback) throws {
-    let channel = try! self.get(clientId, channelId: channelId)
+    let channel = try self.get(clientId, channelId: channelId)
     channel.detach(callback)
   }
 
   //  MARK: Presence
 
   public func enterPresence(_ clientId: String, channelId: String, data: Any?, callback: AblyErrorCallback) throws {
-    let channel = try! self.get(clientId, channelId: channelId)
+    let channel = try self.get(clientId, channelId: channelId)
     channel.presence.enter(data, callback: callback)
   }
 
   public func updatePresence(_ clientId: String, channelId: String, data: Any?, callback: AblyErrorCallback) throws {
-    let channel = try! self.get(clientId, channelId: channelId)
+    let channel = try self.get(clientId, channelId: channelId)
     channel.presence.update(data, callback: callback)
   }
 
   public func leavePresence(_ clientId: String, channelId: String, data: Any?, callback: AblyErrorCallback) throws {
-    let channel = try! self.get(clientId, channelId: channelId)
+    let channel = try self.get(clientId, channelId: channelId)
     channel.presence.leave(data, callback: callback)
   }
 

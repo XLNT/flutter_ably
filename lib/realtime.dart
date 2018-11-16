@@ -7,13 +7,14 @@ import './envelope_channel_message.dart';
 import './channels.dart';
 
 class Realtime implements Client {
-  // public
   final String id;
+  final String token;
   final MethodChannel channel;
   Channels channels;
 
   Realtime({
     this.id,
+    this.token,
     this.channel,
     Observable<EnvelopeChannelMessage> allChannelMessages,
     Observable<EnvelopeChannelStateChange> allChannelStateChanges,
@@ -23,5 +24,18 @@ class Realtime implements Client {
       allChannelMessages: allChannelMessages,
       allChannelStateChanges: allChannelStateChanges,
     );
+  }
+
+  Future<void> setup() async {
+    await channel.invokeMethod('Realtime#new', {
+      'token': token,
+      'clientId': id,
+    });
+  }
+
+  Future<void> dispose() async {
+    await channel.invokeMethod('Realtime#dispose', {
+      'clientId': id,
+    });
   }
 }

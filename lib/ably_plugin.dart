@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:rxdart/rxdart.dart';
 
+import './utils/uuid.dart';
+
 import './envelope_message.dart';
 import './envelope_channel_state_change.dart';
 import './envelope_channel_message.dart';
@@ -20,7 +22,7 @@ bool Function(EnvelopeMessage) clientIs(String clientId) =>
 
 class AblyPlugin {
   final MethodChannel _channel = const MethodChannel(methodChannelName);
-  final Map<String, Client> clients = {};
+  final Map<String, Client> _clients = {};
 
   PublishSubject<MethodCall> _inCalls;
   Observable<MethodCall> calls;
@@ -30,7 +32,9 @@ class AblyPlugin {
 
   AblyPlugin() {
     _inCalls = PublishSubject();
-    _channel.setMethodCallHandler(_inCalls.add);
+    _channel.setMethodCallHandler((MethodCall call) async {
+      _inCalls.add(call);
+    });
 
     calls = _inCalls.distinct().doOnData((MethodCall call) {
       print("Method: ${call.method}, Arguments: ${call.arguments}");
@@ -53,17 +57,25 @@ class AblyPlugin {
   }
 
   Future<Realtime> newRealtime(String token) async {
-    final String clientId =
-        await _channel.invokeMethod('Realtime#new', {'token': token});
+    final String clientId = uuid();
 
-    clients[clientId] = Realtime(
+    _clients[clientId] = Realtime(
       id: clientId,
+      token: token,
       channel: _channel,
       allChannelMessages: allChannelMessages.where(clientIs(clientId)),
       allChannelStateChanges: allChannelStateChanges.where(clientIs(clientId)),
     );
 
-    return clients[clientId];
+    return _clients[clientId];
+  }
+
+  Future<void> disposeRealtime(String clientId) async {
+    try {
+      await _clients[clientId]?.dispose();
+    } finally {
+      _clients.remove(clientId);
+    }
   }
 
   EnvelopeChannelMessage _deserializeMessage(MethodCall call) {

@@ -5,4 +5,7 @@ abstract class Client {
   MethodChannel get channel;
   String get id;
   Channels get channels;
+
+  Future<void> setup();
+  Future<void> dispose();
 }

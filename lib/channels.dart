@@ -23,16 +23,13 @@ class Channels {
   });
 
   Future<RealtimeChannel> get(String id) async {
-    // await client.channel.invokeMethod("Realtime::RealtimeChannel#get", {
-    //   "clientId": client.id,
-    //   "id": id,
-    // });
     final message =
         allChannelMessages.where(channelIs(id)).map((em) => em.message);
     final stateChange = allChannelStateChanges
         .where(channelIs(id))
         .map((esc) => esc.stateChange);
     final state = stateChange.map((s) => s.current).shareValue();
+
     return RealtimeChannel(
       id: id,
       client: client,

@@ -39,19 +39,34 @@ class ChannelsHandler {
   func setup(_ clientId: String, channelId: String) throws {
     let channel = try self.get(clientId, channelId: channelId)
     // send initial state change
-    self.ably.emit("Realtime::RealtimeChannel#onChannelStateChange", arguments: self.serializeStateChange(
-      clientId: clientId,
-      channelId: channelId,
-      stateChange: ARTChannelStateChange(current: channel.state, previous: channel.state, event: ARTChannelEvent.initialized, reason: nil)
-    ))
+    self.ably.emit("Realtime::RealtimeChannel#onChannelStateChange",
+                   arguments: MethodChannelSerializer.envelope(
+                    clientId: clientId,
+                    channelId: channelId,
+                    key: "stateChange",
+                    value: MethodChannelSerializer.serializeStateChange(
+                      ARTChannelStateChange(
+                        current: channel.state,
+                        previous: channel.state,
+                        event: ARTChannelEvent.initialized,
+                        reason: nil
+                      )
+                    )
+      )
+    )
     // send future states
     channel.on { (stateChange) in
       if let stateChange = stateChange {
-        self.ably.emit("Realtime::RealtimeChannel#onChannelStateChange", arguments: self.serializeStateChange(
-          clientId: clientId,
-          channelId: channelId,
-          stateChange: stateChange
-        ))
+        self.ably.emit("Realtime::RealtimeChannel#onChannelStateChange",
+                       arguments: MethodChannelSerializer.envelope(
+                        clientId: clientId,
+                        channelId: channelId,
+                        key: "stateChange",
+                        value: MethodChannelSerializer.serializeStateChange(
+                          stateChange
+                        )
+          )
+        )
       }
     }
   }
@@ -79,7 +94,16 @@ class ChannelsHandler {
   public func subscribe(_ clientId: String, channelId: String, name: String?) throws {
     let channel = try self.get(clientId, channelId: channelId)
     let handler = { (message: ARTMessage) in
-      self.ably.emit("Realtime::RealtimeChannel#onMessage", arguments: self.serializeMessage(clientId: clientId, channelId: channelId, message: message))
+      self.ably.emit("Realtime::RealtimeChannel#onMessage",
+                     arguments: MethodChannelSerializer.envelope(
+                      clientId: clientId,
+                      channelId: channelId,
+                      key: "message",
+                      value: MethodChannelSerializer.serializeMessage(
+                        message
+                      )
+        )
+      )
     }
 
     if let name = name {
@@ -114,35 +138,5 @@ class ChannelsHandler {
   public func leavePresence(_ clientId: String, channelId: String, data: Any?, callback: AblyErrorCallback) throws {
     let channel = try self.get(clientId, channelId: channelId)
     channel.presence.leave(data, callback: callback)
-  }
-
-  // MARK: Internal
-
-  private func serializeMessage(clientId: String, channelId: String, message: ARTMessage) -> Dictionary<String, Any> {
-    return [
-      "clientId": clientId,
-      "channelId": channelId,
-      "message": [
-        "id": message.id,
-        "clientId": message.clientId,
-        "connectionId": message.connectionId,
-        "timestamp": message.timestamp == nil ? nil : Formatter.iso8601.string(from: message.timestamp!),
-        "encoding": message.encoding,
-        "data": message.data,
-        "name": message.name
-      ]
-    ]
-  }
-
-  private func serializeStateChange(clientId: String, channelId: String, stateChange: ARTChannelStateChange) -> Dictionary<String, Any> {
-    return [
-      "clientId": clientId,
-      "channelId": channelId,
-      "stateChange": [
-        "current": stateChange.current.rawValue,
-        "previous": stateChange.previous.rawValue,
-        "resumed": stateChange.resumed,
-      ],
-    ]
   }
 }

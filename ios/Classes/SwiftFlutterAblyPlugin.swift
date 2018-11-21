@@ -5,6 +5,7 @@ enum PluginError : Error {
   case invalidArguments(call: FlutterMethodCall)
   case notImplemented
   case notFound(resource: String)
+  case invalidState
 }
 
 let _kMethodChannelName = "ably";
@@ -12,11 +13,13 @@ let _kMethodChannelName = "ably";
 public class SwiftFlutterAblyPlugin: NSObject, FlutterPlugin {
   var realtime: RealtimeHandler
   var channels: ChannelsHandler
+  var history: HistoryHandler
 
   public init(channel: FlutterMethodChannel) {
     let ably = AblyMethodChannel(channel: channel);
     self.realtime = RealtimeHandler(ably: ably)
     self.channels = ChannelsHandler(ably: ably, realtime: realtime)
+    self.history = HistoryHandler(ably: ably, channels: channels);
   }
 }
 
@@ -121,6 +124,26 @@ extension SwiftFlutterAblyPlugin {
       }
 
       return try channels.detach(clientId, channelId: channelId, callback: handleErrorWithResult(result))
+    case "Realtime::RealtimeChannel#history":
+      guard let args = call.arguments as? Dictionary<String, Any>,
+        let clientId = args["clientId"] as? String,
+        let channelId = args["id"] as? String,
+        let query = MethodChannelSerializer.deserializeHistoryQuery(args["query"] as? Dictionary<String, Any>)
+      else {
+          throw PluginError.invalidArguments(call: call)
+      }
+
+      return try history.get(clientId: clientId, channelId: channelId, query: query) { (res: ARTPaginatedResult<ARTMessage>?, error: ARTErrorInfo?) -> Void in
+        if let error = error {
+          return result(self.ablyToFlutterError(error: error))
+        }
+
+        guard let res = res else {
+          return result(self.toFlutterError(PluginError.invalidState))
+        }
+
+        return result(MethodChannelSerializer.serializePaginatedResult(res))
+      }
     case "Realtime::RealtimeChannel::Presence#enter":
       guard let args = call.arguments as? Dictionary<String, String>,
         let clientId = args["clientId"],

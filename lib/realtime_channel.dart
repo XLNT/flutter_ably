@@ -3,6 +3,8 @@ import 'package:rxdart/rxdart.dart';
 import './channel.dart';
 import './client.dart';
 
+import './paginated_result.dart';
+import './realtime_history_query.dart';
 import './channel_input_message.dart';
 import './channel_message.dart';
 import './channel_state.dart';
@@ -47,13 +49,22 @@ class RealtimeChannel implements Channel {
     return _call("unsubscribe");
   }
 
+  Future<PaginatedResult<ChannelMessage>> history(
+      RealtimeHistoryQuery query) async {
+    final res = await _call("history", {
+      "query": _serializeRealtimeHistoryQuery(query),
+    });
+
+    return _deserializePaginatedResult(res);
+  }
+
   Future<void> publish(List<ChannelInputMessage> messages) async {
     return _call("publish", {
       "messages": _serializeChannelInputMessages(messages),
     });
   }
 
-  Future<void> _call(
+  Future<dynamic> _call(
     String methodName, [
     Map<String, dynamic> args = const {},
   ]) async {
@@ -76,5 +87,33 @@ class RealtimeChannel implements Channel {
               "data": m.data,
             })
         .toList();
+  }
+
+  Map<String, dynamic> _serializeRealtimeHistoryQuery(
+      RealtimeHistoryQuery query) {
+    return {
+      "limit": query.limit,
+      "untilAttach": query.untilAttach,
+    };
+  }
+
+  PaginatedResult<ChannelMessage> _deserializePaginatedResult(
+      Map<String, dynamic> json) {
+    return PaginatedResult(
+      hasNext: json["hasNext"],
+      items: json["items"].map(_deserializeChannelMessage),
+    );
+  }
+
+  ChannelMessage _deserializeChannelMessage(Map<String, dynamic> json) {
+    return ChannelMessage(
+      id: json["id"],
+      clientId: json["clientId"],
+      connectionId: json["connectionId"],
+      name: json["name"],
+      data: json["data"],
+      encoding: json["encoding"],
+      timestamp: json["timestamp"],
+    );
   }
 }

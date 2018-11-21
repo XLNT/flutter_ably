@@ -6,3 +6,5 @@ export './channel.dart';
 export './channels.dart';
 export './realtime_channel.dart';
 export './realtime.dart';
+export './paginated_result.dart';
+export './realtime_history_query.dart';

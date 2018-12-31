@@ -3,11 +3,11 @@ import Ably
 typealias HistoryCallback = (ARTPaginatedResult<ARTMessage>?, ARTErrorInfo?)  -> Void
 
 class HistoryHandler {
-  var ably: AblyMethodChannel
+  var methodChannel: AblyMethodChannel
   var channels: ChannelsHandler
 
-  init(ably: AblyMethodChannel, channels: ChannelsHandler) {
-    self.ably = ably
+  init(methodChannel: AblyMethodChannel, channels: ChannelsHandler) {
+    self.methodChannel = methodChannel
     self.channels = channels
   }
 

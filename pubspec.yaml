@@ -10,7 +10,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  rxdart: ^0.20.0
+  rxdart:
+    git:
+      url: git@github.com:ReactiveX/rxdart.git
+      ref: 9d4a858337994f2a387afd1eaad1e05fbbb8a2cd
   uuid: ^1.0.0
 
 # For information on the generic Dart part of this file, see the

@@ -10,20 +10,14 @@ enum ChannelError: Error {
 class ChannelsHandler {
   // MARK: Properties
 
-  var ably: AblyMethodChannel
+  var methodChannel: AblyMethodChannel
   var realtime: RealtimeHandler
 
   // MARK: Constructor
 
-  init(ably: AblyMethodChannel, realtime: RealtimeHandler) {
-    self.ably = ably
+  init(methodChannel: AblyMethodChannel, realtime: RealtimeHandler) {
+    self.methodChannel = methodChannel
     self.realtime = realtime
-  }
-
-  // MARK: Debug
-
-  func reassemble() {
-
   }
 
   // MARK: Init
@@ -38,8 +32,9 @@ class ChannelsHandler {
 
   func setup(_ clientId: String, channelId: String) throws {
     let channel = try self.get(clientId, channelId: channelId)
+
     // send initial state change
-    self.ably.emit("Realtime::RealtimeChannel#onChannelStateChange",
+    self.methodChannel.emit("Realtime::RealtimeChannel#onChannelStateChange",
                    arguments: MethodChannelSerializer.envelope(
                     clientId: clientId,
                     channelId: channelId,
@@ -54,10 +49,11 @@ class ChannelsHandler {
                     )
       )
     )
-    // send future states
+
+    // send future states through methodChannel
     channel.on { (stateChange) in
       if let stateChange = stateChange {
-        self.ably.emit("Realtime::RealtimeChannel#onChannelStateChange",
+        self.methodChannel.emit("Realtime::RealtimeChannel#onChannelStateChange",
                        arguments: MethodChannelSerializer.envelope(
                         clientId: clientId,
                         channelId: channelId,
@@ -94,7 +90,7 @@ class ChannelsHandler {
   public func subscribe(_ clientId: String, channelId: String, name: String?) throws {
     let channel = try self.get(clientId, channelId: channelId)
     let handler = { (message: ARTMessage) in
-      self.ably.emit("Realtime::RealtimeChannel#onMessage",
+      self.methodChannel.emit("Realtime::RealtimeChannel#onMessage",
                      arguments: MethodChannelSerializer.envelope(
                       clientId: clientId,
                       channelId: channelId,

@@ -5,7 +5,7 @@ import './channel_state.dart';
 
 abstract class Channel {
   String get id;
-  Stream<ChannelMessage> get message;
+  Stream<ChannelMessage> get messages;
   Stream<ChannelStateChange> get stateChange;
   Stream<ChannelState> get state;
 

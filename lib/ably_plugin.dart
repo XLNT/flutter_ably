@@ -15,8 +15,7 @@ import './client.dart';
 import './realtime.dart';
 
 const String methodChannelName = 'ably';
-bool Function(MethodCall) methodIs(String methodName) =>
-    (MethodCall call) => call.method == methodName;
+bool Function(MethodCall) methodIs(String methodName) => (MethodCall call) => call.method == methodName;
 bool Function(EnvelopeMessage) clientIs(String clientId) =>
     (EnvelopeMessage clientMessage) => clientMessage.clientId == clientId;
 
@@ -37,23 +36,19 @@ class AblyPlugin {
     });
 
     calls = _inCalls.distinct().doOnData((MethodCall call) {
-      print("Method: ${call.method}, Arguments: ${call.arguments}");
+      print("AblyPlugin: method: ${call.method}, arguments: ${call.arguments}");
     });
 
-    allChannelMessages = calls
+    allChannelMessages = calls //
         .where(methodIs("Realtime::RealtimeChannel#onMessage"))
         .map(_deserializeMessage);
-    allChannelStateChanges = calls
+    allChannelStateChanges = calls //
         .where(methodIs("Realtime::RealtimeChannel#onChannelStateChange"))
         .map(_deserializeStateChange);
   }
 
   void dispose() {
     _inCalls.close();
-  }
-
-  Future<void> reassemble() async {
-    return await _channel.invokeMethod('reassemble');
   }
 
   Future<Realtime> newRealtime(String token) async {

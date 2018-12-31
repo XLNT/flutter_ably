@@ -1,12 +1,14 @@
 import 'package:rxdart/rxdart.dart';
 import 'package:flutter/services.dart';
 
+import './utils/referenceable.dart';
+
 import './client.dart';
 import './envelope_channel_state_change.dart';
 import './envelope_channel_message.dart';
 import './channels.dart';
 
-class Realtime implements Client {
+class Realtime extends Referenceable implements Client {
   final String id;
   final String token;
   final MethodChannel channel;
@@ -33,7 +35,9 @@ class Realtime implements Client {
     });
   }
 
+  @override
   Future<void> dispose() async {
+    await super.dispose();
     await channel.invokeMethod('Realtime#dispose', {
       'clientId': id,
     });

@@ -23,17 +23,15 @@ class Channels {
   });
 
   Future<RealtimeChannel> get(String id) async {
-    final message =
-        allChannelMessages.where(channelIs(id)).map((em) => em.message);
-    final stateChange = allChannelStateChanges
-        .where(channelIs(id))
-        .map((esc) => esc.stateChange);
+    // @TODO - create a new stream and addStream and allow this other stream to be closed on unsubscribe
+    final messages = allChannelMessages.where(channelIs(id)).map((em) => em.message);
+    final stateChange = allChannelStateChanges.where(channelIs(id)).map((esc) => esc.stateChange);
     final state = stateChange.map((s) => s.current).shareValue();
 
     return RealtimeChannel(
       id: id,
       client: client,
-      message: message,
+      messages: messages,
       stateChange: stateChange,
       state: state,
     );

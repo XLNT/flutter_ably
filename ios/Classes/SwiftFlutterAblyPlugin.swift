@@ -8,7 +8,7 @@ enum PluginError : Error {
   case invalidState
 }
 
-let _kMethodChannelName = "ably";
+let _kMethodChannelName = "ably"
 
 public class SwiftFlutterAblyPlugin: NSObject, FlutterPlugin {
   var realtime: RealtimeHandler
@@ -16,10 +16,10 @@ public class SwiftFlutterAblyPlugin: NSObject, FlutterPlugin {
   var history: HistoryHandler
 
   public init(channel: FlutterMethodChannel) {
-    let ably = AblyMethodChannel(channel: channel);
-    self.realtime = RealtimeHandler(ably: ably)
-    self.channels = ChannelsHandler(ably: ably, realtime: realtime)
-    self.history = HistoryHandler(ably: ably, channels: channels);
+    let methodChannel = AblyMethodChannel(channel: channel)
+    self.realtime = RealtimeHandler(methodChannel: methodChannel)
+    self.channels = ChannelsHandler(methodChannel: methodChannel, realtime: realtime)
+    self.history = HistoryHandler(methodChannel: methodChannel, channels: channels)
   }
 }
 
@@ -32,17 +32,17 @@ extension SwiftFlutterAblyPlugin {
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     do {
-      try throwableHandle(call, result: result);
-      result(nil)
+      try throwableHandle(call, result: result)
     } catch {
       result(self.toFlutterError(error))
     }
   }
 
+  // returning in this function means "I'll handle result async"
+  // not returning defaults to result(nil)
+  // and throwing throws the error correctly
   private func throwableHandle(_ call: FlutterMethodCall, result: @escaping FlutterResult) throws {
     switch(call.method) {
-    case "reassemble":
-      realtime.reassemble()
     case "Realtime#new":
       guard let args = call.arguments as? Dictionary<String, String>,
         let token = args["token"],
@@ -51,7 +51,22 @@ extension SwiftFlutterAblyPlugin {
         throw PluginError.invalidArguments(call: call)
       }
 
-      return try realtime.new(clientId: clientId, token: token)
+      try realtime.new(clientId, token: token)
+    case "Realtime#authorize":
+      guard let args = call.arguments as? Dictionary<String, String>,
+        let token = args["token"],
+        let clientId = args["clientId"]
+      else {
+          throw PluginError.invalidArguments(call: call)
+      }
+
+      return try realtime.authorize(clientId, token: token) { (tokenDetails: ARTTokenDetails?, error: Error?) in
+        if let error = error {
+          return result(self.toFlutterError(error))
+        }
+
+        return result(nil)
+      }
     case "Realtime#dispose":
       guard let args = call.arguments as? Dictionary<String, String>,
         let clientId = args["clientId"]
@@ -59,7 +74,7 @@ extension SwiftFlutterAblyPlugin {
           throw PluginError.invalidArguments(call: call)
       }
 
-      return try realtime.dispose(clientId: clientId)
+      try realtime.dispose(clientId)
     case "Realtime::RealtimeChannel#setup":
       guard let args = call.arguments as? Dictionary<String, String>,
         let clientId = args["clientId"],
@@ -68,7 +83,7 @@ extension SwiftFlutterAblyPlugin {
           throw PluginError.invalidArguments(call: call)
       }
 
-      return try self.channels.setup(clientId, channelId: channelId)
+      try self.channels.setup(clientId, channelId: channelId)
     case "Realtime::RealtimeChannel#dispose":
       guard let args = call.arguments as? Dictionary<String, String>,
         let clientId = args["clientId"],
@@ -77,7 +92,7 @@ extension SwiftFlutterAblyPlugin {
           throw PluginError.invalidArguments(call: call)
       }
 
-      return try self.channels.dispose(clientId, channelId: channelId)
+      try self.channels.dispose(clientId, channelId: channelId)
     case "Realtime::RealtimeChannel#attach":
       guard let args = call.arguments as? Dictionary<String, String>,
         let clientId = args["clientId"],
@@ -105,7 +120,7 @@ extension SwiftFlutterAblyPlugin {
           throw PluginError.invalidArguments(call: call)
       }
 
-      return try channels.subscribe(clientId, channelId: channelId, name: args["name"] as? String)
+      try channels.subscribe(clientId, channelId: channelId, name: args["name"] as? String)
     case "Realtime::RealtimeChannel#unsubscribe":
       guard let args = call.arguments as? Dictionary<String, String>,
         let clientId = args["clientId"],
@@ -114,7 +129,7 @@ extension SwiftFlutterAblyPlugin {
           throw PluginError.invalidArguments(call: call)
       }
 
-      return try channels.unsubscribe(clientId, channelId: channelId)
+      try channels.unsubscribe(clientId, channelId: channelId)
     case "Realtime::RealtimeChannel#detach":
       guard let args = call.arguments as? Dictionary<String, String>,
         let clientId = args["clientId"],
@@ -153,7 +168,7 @@ extension SwiftFlutterAblyPlugin {
           throw PluginError.invalidArguments(call: call)
       }
 
-      return try channels.enterPresence(clientId, channelId: channelId, data: data, callback: self.handleErrorWithResult(result));
+      return try channels.enterPresence(clientId, channelId: channelId, data: data, callback: self.handleErrorWithResult(result))
     case "Realtime::RealtimeChannel::Presence#leave":
       guard let args = call.arguments as? Dictionary<String, String>,
         let clientId = args["clientId"],
@@ -163,7 +178,7 @@ extension SwiftFlutterAblyPlugin {
           throw PluginError.invalidArguments(call: call)
       }
 
-      return try channels.leavePresence(clientId, channelId: channelId, data: data, callback: self.handleErrorWithResult(result));
+      return try channels.leavePresence(clientId, channelId: channelId, data: data, callback: self.handleErrorWithResult(result))
     case "Realtime::RealtimeChannel::Presence#update":
       guard let args = call.arguments as? Dictionary<String, String>,
         let clientId = args["clientId"],
@@ -173,10 +188,12 @@ extension SwiftFlutterAblyPlugin {
           throw PluginError.invalidArguments(call: call)
       }
 
-      return try channels.updatePresence(clientId, channelId: channelId, data: data, callback: self.handleErrorWithResult(result));
+      return try channels.updatePresence(clientId, channelId: channelId, data: data, callback: self.handleErrorWithResult(result))
     default:
       throw PluginError.notImplemented
     }
+
+    return result(nil)
   }
 
   private func handleErrorWithResult(_ result: @escaping FlutterResult) -> (ARTErrorInfo?) -> () {
@@ -221,6 +238,7 @@ extension Formatter {
     return formatter
   }()
 }
+
 extension Date {
   var iso8601: String {
     return Formatter.iso8601.string(from: self)
@@ -229,6 +247,6 @@ extension Date {
 
 extension String {
   var dateFromISO8601: Date? {
-    return Formatter.iso8601.date(from: self)   // "Mar 22, 2017, 10:22 AM"
+    return Formatter.iso8601.date(from: self)
   }
 }

@@ -13,14 +13,14 @@ import './channel_state_change.dart';
 class RealtimeChannel implements Channel {
   final Client client;
   final String id;
-  final Observable<ChannelMessage> message;
+  final Observable<ChannelMessage> messages;
   final Observable<ChannelStateChange> stateChange;
   final Observable<ChannelState> state;
 
   RealtimeChannel({
     this.client,
     this.id,
-    this.message,
+    this.messages,
     this.stateChange,
     this.state,
   });
@@ -49,13 +49,12 @@ class RealtimeChannel implements Channel {
     return _call("unsubscribe");
   }
 
-  Future<PaginatedResult<ChannelMessage>> history(
-      RealtimeHistoryQuery query) async {
+  Future<PaginatedResult<ChannelMessage>> history(RealtimeHistoryQuery query) async {
     final res = await _call("history", {
       "query": _serializeRealtimeHistoryQuery(query),
     });
 
-    return _deserializePaginatedResult(res);
+    return _deserializePaginatedResult(Map<String, dynamic>.from(res));
   }
 
   Future<void> publish(List<ChannelInputMessage> messages) async {
@@ -72,6 +71,7 @@ class RealtimeChannel implements Channel {
       "clientId": client.id,
       "id": id,
     };
+
     return client.channel.invokeMethod(
       "Realtime::RealtimeChannel#$methodName",
       baseArgs..addAll(args),
@@ -89,19 +89,23 @@ class RealtimeChannel implements Channel {
         .toList();
   }
 
-  Map<String, dynamic> _serializeRealtimeHistoryQuery(
-      RealtimeHistoryQuery query) {
+  Map<String, dynamic> _serializeRealtimeHistoryQuery(RealtimeHistoryQuery query) {
     return {
+      "start": query.start.millisecondsSinceEpoch,
+      "end": query.end.millisecondsSinceEpoch,
+      "direction": query.direction,
       "limit": query.limit,
       "untilAttach": query.untilAttach,
     };
   }
 
-  PaginatedResult<ChannelMessage> _deserializePaginatedResult(
-      Map<String, dynamic> json) {
-    return PaginatedResult(
+  PaginatedResult<ChannelMessage> _deserializePaginatedResult(Map<String, dynamic> json) {
+    return PaginatedResult<ChannelMessage>(
       hasNext: json["hasNext"],
-      items: json["items"].map(_deserializeChannelMessage),
+      items: (json["items"] as List)
+          .map<Map<String, dynamic>>((t) => Map<String, dynamic>.from(t))
+          .map<ChannelMessage>(_deserializeChannelMessage)
+          .toList(),
     );
   }
 

@@ -2,10 +2,10 @@ import 'package:flutter/services.dart';
 import './channels.dart';
 
 abstract class Client {
-  MethodChannel get channel;
   String get id;
+  MethodChannel get channel;
   Channels get channels;
 
-  Future<void> setup();
+  Future<void> setup(String token);
   Future<void> dispose();
 }

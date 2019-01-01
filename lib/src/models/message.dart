@@ -1,4 +1,9 @@
-class ChannelMessage {
+import 'package:json_annotation/json_annotation.dart';
+
+part 'message.g.dart';
+
+@JsonSerializable()
+class Message {
   String id;
   String clientId;
   String connectionId;
@@ -7,7 +12,7 @@ class ChannelMessage {
   String data;
   String name;
 
-  ChannelMessage({
+  Message({
     this.id,
     this.clientId,
     this.connectionId,
@@ -16,4 +21,7 @@ class ChannelMessage {
     this.data,
     this.name,
   });
+
+  factory Message.fromJson(Map json) => _$MessageFromJson(json);
+  Map<String, dynamic> toJson() => _$MessageToJson(this);
 }

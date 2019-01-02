@@ -25,14 +25,14 @@ class _Converter<T> implements JsonConverter<T, Object> {
 
   @override
   T fromJson(Object json) {
-    Message.fromJson(Map<String, dynamic>.from(json)) as T
+    return Message.fromJson(Map<String, dynamic>.from(json)) as T;
 
     // TODO support all PaginatedResult generic types
 
     // This will only work if `json` is a native JSON type:
     //   num, String, bool, null, etc
     // *and* is assignable to `T`.
-    return json as T;
+    // return json as T;
   }
 
   @override

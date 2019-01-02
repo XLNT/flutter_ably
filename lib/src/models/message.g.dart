@@ -11,7 +11,7 @@ Message _$MessageFromJson(Map json) {
       id: json['id'] as String,
       clientId: json['clientId'] as String,
       connectionId: json['connectionId'] as String,
-      timestamp: json['timestamp'] as String,
+      timestamp: json['timestamp'] as int,
       encoding: json['encoding'] as String,
       data: json['data'] as String,
       name: json['name'] as String);

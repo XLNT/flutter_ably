@@ -7,7 +7,7 @@ class Message {
   String id;
   String clientId;
   String connectionId;
-  String timestamp;
+  int timestamp;
   String encoding;
   String data;
   String name;
